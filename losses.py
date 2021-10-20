@@ -1,9 +1,7 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 from modules import TraceExpM, truncatedTraceExpM
 import numpy as np
-import scipy.linalg as slin
 
 
 def reconstructionLoss(X, Xpred, N):

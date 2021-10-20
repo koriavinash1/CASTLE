@@ -6,6 +6,7 @@ import scipy.linalg as slin
 
 
 class TraceExpm(torch.autograd.Function):
+    # https://github.com/xunzheng/notears/blob/ba61337bd0e5410c04cc708be57affc191a8c424/notears/trace_expm.py#L6
     @staticmethod
     def forward(ctx, input):
         # detach so we can cast to NumPy
