@@ -45,7 +45,7 @@ class TraditionalCASTLE(nn.Module):
 							self.shared(\
 								self.W0LayerSet[i](x, i))))
 
-		return torch.cat(out, dim = 1)
+		return out[0], torch.cat(out, dim = 1)
 
 	def loss(self, x, y, xrecon, pred):
 		weights = getAllAdjWeights(self.W0LayerSet)
@@ -102,7 +102,7 @@ class CustomCASTLE(nn.Module):
 							self.shared(\
 								self.W0Layer(x, i))))
 
-		return torch.cat(out, dim = 1)
+		return out[0], torch.cat(out, dim = 1)
 
 	def loss(self, x, y):
 		weight = getAllAdjWeights([self.W0Layer])[0]
