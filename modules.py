@@ -26,13 +26,28 @@ trace_expm = TraceExpm.apply
 
 
 
+def truncatedTraceExpM(Z, truncationOrder=10):
+    d = Z.shape[0]
+    dagL = d*1.0
+    coff = 1.0
+
+    Zin = torch.eye(d)
+    for i in range(truncationOrder):
+        Zin = torch.matmul(Zin, Z)
+        dagL += 1./coff * torch.trace(Zin)
+        coff = coff*(i+1)
+
+    return dagL - (d*1.0)
+
+
+
 def getAllAdjWeights(layers):
     W = []
     for layer in layers:
         W.append(layer.weight)
     return torch.cat(W, dim = 0)
 
-    
+
 
 def getMask(idx, ninputs, nhidden):
     mask = torch.ones(ninputs, nhidden)
@@ -118,5 +133,3 @@ class RegHead(nn.Module):
 
     def forward(self, x):
         return self.net(x)
-
-
