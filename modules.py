@@ -121,9 +121,9 @@ class SharedNetMultiLayered(nn.Module):
         return self.net(x)
 
 
-class RegHead(nn.Module):
+class FinalHead(nn.Module):
     def __init__(self, infeatures, noutputs=1):
-        super(RegHead, self).__init__()
+        super(FinalHead, self).__init__()
 
         layers = []
         layers.append(nn.Linear(infeatures, noutputs))
