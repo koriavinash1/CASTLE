@@ -18,8 +18,9 @@ class TraditionalCASTLE(nn.Module):
 					nhidden=32,
 					noutputs=1,
 					nnodes=-1,
+					device='cuda:0',
 					weightThreshold=0.3):
-		super(CASTLE, self).__init__()
+		super(TraditionalCASTLE, self).__init__()
 
 		self.ntrain = ntrain
 		self.inputdim = inputdim
@@ -31,19 +32,20 @@ class TraditionalCASTLE(nn.Module):
 		self.nnodes = self.inputdim if nnodes <= 0 else nnodes
 
 
-		self.W0LayerSet = [MaskedWts(self.inputdim, self.nhidden) for _ in range(self.inputdim)]
-		self.headSet = [FinalHead(self.nhidden, self.noutputs) for _ in range(self.inputdim)]
+		self.W0LayerSet = [MaskedWts(self.inputdim, self.nhidden, device).to(device) for _ in range(self.inputdim)]
+		self.headSet = [FinalHead(self.nhidden, self.noutputs).to(device) for _ in range(self.inputdim)]
 
 		self.shared = SharedNet(self.nhidden, nhidden)
 
-		self.loss = MainLoss(self.lambda_, self.beta_, self.ntrain)
+		self.lossfn = MainLoss(self.lambda_, self.beta_, self.ntrain)
 
 	def forward(self, x):
 		out = []
 		for i in range(self.inputdim):
-			out.append(self.headSet[i](\
-							self.shared(\
-								self.W0LayerSet[i](x, i))))
+			feature = self.W0LayerSet[i](x, i)
+			feature = self.shared(feature)
+			feature = self.headSet[i](feature)
+			out.append(feature)
 
 		return out[0], torch.cat(out, dim = 1)
 
@@ -51,13 +53,9 @@ class TraditionalCASTLE(nn.Module):
 		weights = getAllAdjWeights(self.W0LayerSet)
 		# not sure about this step but, 
 		# l116 in original implementation
-		weights = torch.sqrt(torch.sum(torch.square(weights), \
-								dim=1, keepdim=True))
+		weight = torch.sqrt(torch.sum(torch.square(weights), dim=2))
 
-		weight = torch.cat(weights, dim=1)
-		print (weight.shape)
-
-		return self.loss(pred, y, x, xrecon, weight)
+		return self.lossfn(pred, y, x, xrecon, weight)
 		
 
 	def predict(self, x):
@@ -77,7 +75,7 @@ class CustomCASTLE(nn.Module):
 					noutputs=1,
 					nnodes=-1,
 					weightThreshold=0.3):
-		super(CASTLE, self).__init__()
+		super(CustomCASTLE, self).__init__()
 
 		self.ntrain = ntrain
 		self.inputdim = inputdim

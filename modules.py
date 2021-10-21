@@ -5,34 +5,39 @@ import numpy as np
 import scipy.linalg as slin
 
 
-class TraceExpm(torch.autograd.Function):
+class TraceExpM(torch.autograd.Function):
     # https://github.com/xunzheng/notears/blob/ba61337bd0e5410c04cc708be57affc191a8c424/notears/trace_expm.py#L6
     @staticmethod
     def forward(ctx, input):
         # detach so we can cast to NumPy
-        E = slin.expm(input.detach().numpy())
+        try:
+            E = slin.expm(input.detach().numpy())
+        except:
+            E = slin.expm(input.detach().cpu().numpy())
+
         f = np.trace(E)
-        E = torch.from_numpy(E)
+        E = torch.from_numpy(E).to(input.device)
         ctx.save_for_backward(E)
-        return torch.as_tensor(f, dtype=input.dtype)
+        return torch.as_tensor(f, dtype=input.dtype).to(input.device)
 
     @staticmethod
     def backward(ctx, grad_output):
         E, = ctx.saved_tensors
+
         grad_input = grad_output * E.t()
         return grad_input
 
 
-trace_expm = TraceExpm.apply
+TraceExpM = TraceExpM.apply
 
 
 
-def truncatedTraceExpM(Z, truncationOrder=10):
+def truncatedTraceExpM(Z, truncationOrder=2):
     d = Z.shape[0]
     dagL = d*1.0
     coff = 1.0
 
-    Zin = torch.eye(d)
+    Zin = torch.eye(d).to(Z.device)
     for i in range(truncationOrder):
         Zin = torch.matmul(Zin, Z)
         dagL += 1./coff * torch.trace(Zin)
@@ -45,8 +50,8 @@ def truncatedTraceExpM(Z, truncationOrder=10):
 def getAllAdjWeights(layers):
     W = []
     for layer in layers:
-        W.append(layer.weight)
-    return torch.cat(W, dim = 0)
+        W.append(layer.weight.unsqueeze(0))
+    return torch.cat(W, dim=0)
 
 
 
@@ -56,23 +61,37 @@ def getMask(idx, ninputs, nhidden):
     return mask
 
 
+def weights_init_normal(m):
+    classname = m.__class__.__name__
+    # for every Linear layer in a model
+    if classname.find('Linear') != -1:
+        y = m.in_features
+    # m.weight.data shoud be taken from a normal distribution
+        m.weight.data.normal_(0.0,1/np.sqrt(y))
+    # m.bias.data should be 0
+        m.bias.data.fill_(0)
+
 
 class MaskedWts(nn.Module):
-    def __init__(self, indims, outdims):
+    def __init__(self, indims, outdims, device):
         super(MaskedWts, self).__init__()
         self.indims = indims
         self.outdims = outdims
-
-        self.weight = nn.Parameter(torch.Tensor(indims, outdims))  # define the trainable parameter
+        self.device = device
+        self.weight = nn.Parameter(torch.Tensor(indims, outdims)) # define the trainable parameter
         self.bias = nn.Parameter(torch.Tensor(outdims))
+
+        nn.init.normal_(self.weight)
+        nn.init.constant_(self.bias, 0)
         pass
 
     def forward(self, x, k):
         # in original implementation weights are overwritten 
         # maybe thats why indims set of weights were required
 
-        self.mask = getMask(k, self.indims, self.outdims)
-        feature = F.matmul(x, self.weight*self.mask) + self.bias
+        self.mask = getMask(k, self.indims, self.outdims).to(self.device)
+
+        feature = torch.matmul(x, self.weight*self.mask) + self.bias
         feature = F.relu(feature)
         return feature
 
@@ -82,6 +101,7 @@ class MaskedInput(nn.Module):
         super(MaskedWts, self).__init__()
         self.indims = batchsize
         self.outdims = indims
+        self.apply(weights_init_normal)
         pass
 
     def forward(self, x, k):
@@ -98,6 +118,7 @@ class SharedNet(nn.Module):
         layers.append(nn.ReLU())
 
         self.net = nn.Sequential(*layers)
+        self.apply(weights_init_normal)
         pass
 
     def forward(self, x):
@@ -115,6 +136,7 @@ class SharedNetMultiLayered(nn.Module):
         layers.append(nn.ReLU())
 
         self.net = nn.Sequential(*layers)
+        self.apply(weights_init_normal)
         pass
 
     def forward(self, x):
@@ -127,9 +149,9 @@ class FinalHead(nn.Module):
 
         layers = []
         layers.append(nn.Linear(infeatures, noutputs))
-        layers.append(nn.ReLU())
 
         self.net = nn.Sequential(*layers)
+        self.apply(weights_init_normal)
         pass
 
     def forward(self, x):

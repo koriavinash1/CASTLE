@@ -11,9 +11,10 @@ def reconstructionLoss(X, Xpred, N):
 
 def RwFunction(AdjMatrix):
 	d = AdjMatrix.shape[0]
-    AdjMatrix = AdjMatrix.view(d, -1, d)  # [j, m1, i]
-    AdjMatrix = torch.sum(AdjMatrix * AdjMatrix, dim=1).t()  # [i, j]
-    return (TraceExpM(AdjMatrix) - d)**2
+	AdjMatrix = AdjMatrix.view(d, -1, d)  # [j, m1, i]
+	AdjMatrix = torch.sum(AdjMatrix * AdjMatrix, dim=1).t()  # [i, j]
+	# return (TraceExpM(AdjMatrix) - d)**2
+	return (truncatedTraceExpM(AdjMatrix) - d)**2
 
 def L1(AdjMatrix):
 	return torch.norm(AdjMatrix, 1)
@@ -22,7 +23,9 @@ def L1(AdjMatrix):
 def RDAGLoss(X, Xpred, AdjMatrix, beta, N):
 	Lrecon = reconstructionLoss(X, Xpred, N)
 	Rw = RwFunction(AdjMatrix)
-	loss = Lrecon + Rw + beta*L1(AdjMatrix)
+	l1 = L1(AdjMatrix)
+	loss = Lrecon + Rw + beta*l1
+	# print ("Lrecon: {}, Trace: {}, L1: {}".format(Lrecon, Rw, l1))
 	return loss
 
 
@@ -42,5 +45,6 @@ class MainLoss(nn.Module):
 							self.beta_, 
 							self.N)
 		loss = self.supervised(pred, target)
+		# print ("Supervised: {}".format(loss))
 
 		return loss + self.lambda_*dagloss
