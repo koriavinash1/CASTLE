@@ -50,7 +50,14 @@ if __name__ == '__main__':
 
 		# model and optimizer
 
-		castle = TraditionalCASTLE(ntrain=X_train.shape[0], 
+		# castle = TraditionalCASTLE(ntrain=X_train.shape[0], 
+		# 				inputdim = X_train.shape[1], 
+		# 				lambda_ = lambda_,
+		# 				beta_ = beta_,
+		# 				device = device,
+		# 				weightThreshold = w_threshold)
+		
+		castle = CustomCASTLE(ntrain=X_train.shape[0], 
 						inputdim = X_train.shape[1], 
 						lambda_ = lambda_,
 						beta_ = beta_,

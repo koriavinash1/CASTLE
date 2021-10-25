@@ -81,7 +81,7 @@ class MaskedWts(nn.Module):
         self.weight = nn.Parameter(torch.Tensor(indims, outdims)) # define the trainable parameter
         self.bias = nn.Parameter(torch.Tensor(outdims))
 
-        nn.init.normal_(self.weight)
+        nn.init.normal_(self.weight, mean=0.0, std=0.01)
         nn.init.constant_(self.bias, 0)
         pass
 
