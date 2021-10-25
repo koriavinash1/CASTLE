@@ -32,14 +32,18 @@ TraceExpM = TraceExpM.apply
 
 
 
-def truncatedTraceExpM(Z, truncationOrder=2):
+def truncatedTraceExpM(Z, truncationOrder=2, normalize = True):
     d = Z.shape[0]
     dagL = d*1.0
     coff = 1.0
 
+    if normalize:
+        Z = Z /(1.*torch.det(Z) + 0.001)
+
     Zin = torch.eye(d).to(Z.device)
     for i in range(truncationOrder):
         Zin = torch.matmul(Zin, Z)
+
         dagL += 1./coff * torch.trace(Zin)
         coff = coff*(i+1)
 
